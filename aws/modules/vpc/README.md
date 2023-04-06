@@ -1,5 +1,20 @@
 # Module: vpc
 
+### Purpose
+This module ...
+
+It creates the following resources
+- aws_vpc
+- aws_subnet
+- aws_internet_gateway
+- aws_route_table
+- aws_route_table_association
+- aws_eip
+- aws_nat_gateway
+- aws_route_table
+- aws_route_table_association
+
+
 ### Inputs
 This module requires the following inputs:
 
