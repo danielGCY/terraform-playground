@@ -23,7 +23,7 @@ output "public_subnets_route_table_id" {
 }
 
 output "nat_gateway_id" {
-  value = aws_nat_gateway.main[0].id
+  value = length(aws_nat_gateway.main) > 0 ? aws_nat_gateway.main[0].id : null
 }
 
 output "private_subnets_ids" {
@@ -31,5 +31,5 @@ output "private_subnets_ids" {
 }
 
 output "private_subnets_route_table_id" {
-  value = aws_route_table.private[0].id
+  value = length(aws_route_table.private) > 0 ? aws_route_table.private[0].id : null
 }
