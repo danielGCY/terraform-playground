@@ -7,3 +7,8 @@ output "asg_id" {
   description = "AWS resource ID for auto-scaling group"
   value       = aws_autoscaling_group.main.id
 }
+
+output "asg_arn" {
+  description = "AWS resource ARN for auto-scaling group"
+  value       = aws_autoscaling_group.main.arn
+}
