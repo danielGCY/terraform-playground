@@ -22,7 +22,8 @@ module "vpc" {
 
   name_prefix               = local.name_prefix
   region                    = local.region
-  public_subnet_cidr_blocks = ["10.0.0.0/24", "10.0.1.0/24"]
+  public_subnet_cidr_blocks = var.public_subnet_cidr_blocks
+  cidr_block                = var.vpc_cidr_block
 }
 
 ### ASG
@@ -70,14 +71,14 @@ resource "aws_security_group" "ecs_instances" {
 
   ingress = [{
     cidr_blocks      = ["0.0.0.0/0"]
-    description      = "Allow incoming TCP connections on port 80 from ALB only"
-    from_port        = 0
+    description      = "Allow incoming TCP connections on port ${var.app_port} from ALB only"
+    from_port        = var.app_port
     ipv6_cidr_blocks = []
     prefix_list_ids  = []
-    protocol         = "ALL"
-    security_groups  = []
+    protocol         = "TCP"
+    security_groups  = [aws_security_group.alb.id]
     self             = false
-    to_port          = 0
+    to_port          = var.app_port
   }]
 
   egress = [{
@@ -193,16 +194,15 @@ resource "aws_ecs_task_definition" "default" {
   requires_compatibilities = ["EC2"]
 
   container_definitions = jsonencode([{
-    name  = "${local.name_prefix}-app"
-    image = "${aws_ecr_repository.main.repository_url}:latest"
-    # image     = "registry.gitlab.com/architect-io/artifacts/nodejs-hello-world:latest"
+    name      = "${local.name_prefix}-app"
+    image     = "${aws_ecr_repository.main.repository_url}:latest"
     essential = true
     cpu       = 256
     memory    = 512
 
     portMappings = [{
       protocol      = "tcp"
-      containerPort = 80
+      containerPort = var.app_port
     }]
 
     logConfiguration = {
@@ -230,7 +230,7 @@ resource "aws_ecs_service" "default" {
   load_balancer {
     target_group_arn = aws_lb_target_group.main.arn
     container_name   = "${local.name_prefix}-app"
-    container_port   = 80
+    container_port   = var.app_port
   }
 }
 

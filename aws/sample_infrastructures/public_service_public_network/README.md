@@ -16,7 +16,7 @@ This folder contains Terraform code that creates the infrastructure described [h
 8. Click on "View push commnads" and follow the prompts.
    > If you do not have your own app to deploy,
    >
-   > - Navigate to `[common/test-app](../../../common/test-app/)
+   > - Navigate to `../../../common/test-app/`
    > - Run steps 2 - 4
 9. Open a web browser of choice and navigate to `http://${load_balancer_ip}` where `load_balancer_ip` is the output from `terraform apply`
 10. If everything worked correctly, you should see your app deployed and running

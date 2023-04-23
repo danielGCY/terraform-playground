@@ -7,8 +7,6 @@ COPY ./yarn.lock /app/
 RUN yarn
 COPY . /app
 RUN yarn build
-# RUN yarn start
-# CMD ["yarn", "start"]
 
 # stage 2 - build the final image and copy the react build files
 FROM nginx:stable-alpine3.17-slim
