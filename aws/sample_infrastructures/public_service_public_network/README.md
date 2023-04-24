@@ -36,3 +36,4 @@ This folder contains Terraform code that creates the infrastructure described [h
 4. A lot of hardcoded stuff may want to be configurable, or at least make it more obvious
 5. Security group module
 6. Think about how much data sharing happens between the various modules/resource blocks to see if I can separate or combine resource blocks together
+7. Automate build and deploy of image
