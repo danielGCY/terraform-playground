@@ -67,32 +67,29 @@ resource "aws_iam_instance_profile" "ecs_agent" {
   role = aws_iam_role.ecs_agent.name
 }
 
-resource "aws_security_group" "ecs_instances" {
+module "ecs_instance_sg" {
+  source = "../../modules/sg"
+
+  region = local.region
   name   = "${local.name_prefix}-ecs-instance-sg"
   vpc_id = module.vpc.vpc_id
 
-  ingress = [{
-    cidr_blocks      = ["0.0.0.0/0"]
-    description      = "Allow incoming TCP connections on port ${var.app_port} from ALB only"
-    from_port        = var.app_port
-    ipv6_cidr_blocks = []
-    prefix_list_ids  = []
-    protocol         = "TCP"
-    security_groups  = [aws_security_group.alb.id]
-    self             = false
-    to_port          = var.app_port
-  }]
+  ingress_rules = [
+    {
+      description                  = "Allow incoming TCP connections on port ${var.app_port} from ALB only"
+      from_port                    = var.app_port
+      ip_protocol                  = "TCP"
+      referenced_security_group_id = module.alb_sg.id
+      to_port                      = var.app_port
+    },
+  ]
 
-  egress = [{
-    cidr_blocks      = ["0.0.0.0/0"]
-    description      = "Allow all outgoing connections"
-    from_port        = 0
-    ipv6_cidr_blocks = []
-    prefix_list_ids  = []
-    protocol         = "ALL"
-    security_groups  = []
-    self             = false
-    to_port          = 0
+  egress_rules = [{
+    cidr_ipv4   = "0.0.0.0/0"
+    description = "Allow all outgoing connections"
+    from_port   = 0
+    ip_protocol = "ALL"
+    to_port     = 0
   }]
 }
 
@@ -111,7 +108,7 @@ resource "aws_launch_template" "default" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups             = [aws_security_group.ecs_instances.id]
+    security_groups             = [module.ecs_instance_sg.id]
   }
 }
 
@@ -122,39 +119,34 @@ resource "aws_ecr_repository" "main" {
 }
 
 ### ALB
-resource "aws_security_group" "alb" {
+module "alb_sg" {
+  source = "../../modules/sg"
+
   name   = "${local.name_prefix}-alb-sg"
+  region = local.region
   vpc_id = module.vpc.vpc_id
 
-  ingress = [{
-    cidr_blocks      = ["0.0.0.0/0"]
-    description      = "Allow all incoming connections"
-    from_port        = 80
-    ipv6_cidr_blocks = []
-    prefix_list_ids  = []
-    protocol         = "TCP"
-    security_groups  = []
-    self             = false
-    to_port          = 80
+  ingress_rules = [{
+    cidr_ipv4   = "0.0.0.0/0"
+    description = "Allow all incoming HTTP connections"
+    from_port   = 80
+    ip_protocol = "TCP"
+    to_port     = 80
   }]
 
-  egress = [{
-    cidr_blocks      = ["0.0.0.0/0"]
-    description      = "Allow all outgoing connections"
-    from_port        = 0
-    ipv6_cidr_blocks = []
-    prefix_list_ids  = []
-    protocol         = "ALL"
-    security_groups  = []
-    self             = false
-    to_port          = 0
+  egress_rules = [{
+    cidr_ipv4   = "0.0.0.0/0"
+    description = "Allow all outgoing connections"
+    from_port   = 0
+    ip_protocol = "ALL"
+    to_port     = 0
   }]
 }
 
 resource "aws_lb" "main" {
   name               = "${local.name_prefix}-lb"
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.ecs_instances.id]
+  security_groups    = [module.alb_sg.id]
   subnets            = module.vpc.public_subnets_ids
 }
 
@@ -225,7 +217,7 @@ resource "aws_ecs_service" "default" {
   desired_count   = 1
 
   network_configuration {
-    security_groups = [aws_security_group.ecs_instances.id]
+    security_groups = [module.ecs_instance_sg.id]
     subnets         = module.vpc.public_subnets_ids
   }
 
