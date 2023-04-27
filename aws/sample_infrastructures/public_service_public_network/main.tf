@@ -1,21 +1,7 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.0"
-    }
-  }
-
-  required_version = "~> 1.4"
-}
-
 locals {
-  region      = var.region
-  name_prefix = var.name_prefix
-}
-
-provider "aws" {
-  region = local.region
+  region         = var.region
+  name_prefix    = var.name_prefix
+  container_name = "${var.name_prefix}-app"
 }
 
 ### VPC
@@ -74,15 +60,13 @@ module "ecs_instance_sg" {
   name   = "${local.name_prefix}-ecs-instance-sg"
   vpc_id = module.vpc.vpc_id
 
-  ingress_rules = [
-    {
-      description                  = "Allow incoming TCP connections on port ${var.app_port} from ALB only"
-      from_port                    = var.app_port
-      ip_protocol                  = "TCP"
-      referenced_security_group_id = module.alb_sg.id
-      to_port                      = var.app_port
-    },
-  ]
+  ingress_rules = [{
+    description                  = "Allow incoming TCP connections on port ${var.app_port} from ALB only"
+    from_port                    = var.app_port
+    ip_protocol                  = "TCP"
+    referenced_security_group_id = module.alb_sg.id
+    to_port                      = var.app_port
+  }]
 
   egress_rules = [{
     cidr_ipv4   = "0.0.0.0/0"
@@ -100,7 +84,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
 resource "aws_launch_template" "default" {
   instance_type = "t2.micro"
   image_id      = data.aws_ssm_parameter.ecs_optimized_ami_id.value
-  user_data     = base64encode("#!/bin/bash\necho ECS_CLUSTER=${module.ecs.cluster_name} >> /etc/ecs/ecs.config")
+  user_data     = base64encode("#!/bin/bash\necho ECS_CLUSTER=${module.application_deployment.cluster_name} >> /etc/ecs/ecs.config")
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_agent.name
@@ -110,12 +94,6 @@ resource "aws_launch_template" "default" {
     associate_public_ip_address = true
     security_groups             = [module.ecs_instance_sg.id]
   }
-}
-
-### ECR
-resource "aws_ecr_repository" "main" {
-  name         = "${local.name_prefix}-ecr-main"
-  force_delete = true
 }
 
 ### ALB
@@ -169,27 +147,23 @@ resource "aws_lb_listener" "main" {
   }
 }
 
-### ECS
-module "ecs" {
-  source = "../../modules/ecs"
+module "application_deployment" {
+  source = "../../modules/application_deployment"
 
-  name_prefix  = local.name_prefix
-  region       = local.region
-  vpc_id       = module.vpc.vpc_id
-  asg_arn      = module.asg.asg_arn
-  cluster_name = "default"
+  name_prefix = local.name_prefix
+  region      = local.region
+  vpc_id      = module.vpc.vpc_id
+
+  ### ECR
+  force_delete = true
   ecs_provider = "EC2"
-}
+  asg_arn      = module.asg.asg_arn
 
-# Task definition using EC2 instances
-resource "aws_ecs_task_definition" "default" {
-  family                   = "${local.name_prefix}-app"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
-
-  container_definitions = jsonencode([{
-    name      = "${local.name_prefix}-app"
-    image     = "${aws_ecr_repository.main.repository_url}:latest"
+  ### ECS TASK DEFINITION
+  task_definition_family = "${local.name_prefix}-app"
+  task_definition_container_definitions = jsonencode([{
+    name = local.container_name
+    # image     = "asdf:latest"
     essential = true
     cpu       = 256
     memory    = 512
@@ -208,23 +182,21 @@ resource "aws_ecs_task_definition" "default" {
       }
     }
   }])
-}
+  task_definition_network_mode             = "awsvpc"
+  task_definition_required_compatibilities = "EC2"
 
-resource "aws_ecs_service" "default" {
-  name            = "${local.name_prefix}-ecs-service"
-  cluster         = module.ecs.cluster_id
-  task_definition = aws_ecs_task_definition.default.arn
-  desired_count   = 1
-
-  network_configuration {
+  ### ECS SERVICE
+  service_load_balancer = {
+    target_group_arn = aws_lb_target_group.main.arn
+    container_name   = local.container_name
+    container_port   = var.app_port
+  }
+  service_network_configuration = {
     security_groups = [module.ecs_instance_sg.id]
     subnets         = module.vpc.public_subnets_ids
   }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.main.arn
-    container_name   = "${local.name_prefix}-app"
-    container_port   = var.app_port
+  service_triggers = {
+    redeploymenet = timestamp()
   }
 }
 
