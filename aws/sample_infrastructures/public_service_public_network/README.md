@@ -30,10 +30,7 @@ This folder contains Terraform code that creates the infrastructure described [h
 
 ### TODO
 
-1. See if I can group the ECS stuff into a module
-2. See if I can use locals to set all the constants and config used (think of it as a "constants" file)
-3. Can think about moving the `terraform` and `provider` blocks into another folder (e.g. `providers.tf`)
-4. A lot of hardcoded stuff may want to be configurable, or at least make it more obvious
-5. Security group module
-6. Think about how much data sharing happens between the various modules/resource blocks to see if I can separate or combine resource blocks together
-7. Automate build and deploy of image
+1. See if I can use locals to set all the constants and config used (think of it as a "constants" file)
+2. A lot of hardcoded stuff may want to be configurable, or at least make it more obvious
+3. Think about how much data sharing happens between the various modules/resource blocks to see if I can separate or combine resource blocks together
+4. Automate build and deploy of image
