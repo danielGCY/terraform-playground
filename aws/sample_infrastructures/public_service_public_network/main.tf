@@ -162,8 +162,7 @@ module "application_deployment" {
   ### ECS TASK DEFINITION
   task_definition_family = "${local.name_prefix}-app"
   task_definition_container_definitions = jsonencode([{
-    name = local.container_name
-    # image     = "asdf:latest"
+    name      = local.container_name
     essential = true
     cpu       = 256
     memory    = 512
