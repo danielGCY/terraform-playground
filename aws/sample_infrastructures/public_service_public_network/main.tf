@@ -97,6 +97,16 @@ resource "aws_launch_template" "default" {
 }
 
 ### ALB
+module "alb" {
+  source = "../../modules/alb"
+
+  alb_name            = "${local.name_prefix}-lb"
+  alb_security_groups = [module.alb_sg.id]
+  alb_subnets         = module.vpc.public_subnets_ids
+  name_prefix         = local.name_prefix
+  region              = local.region
+}
+
 module "alb_sg" {
   source = "../../modules/sg"
 
@@ -121,29 +131,26 @@ module "alb_sg" {
   }]
 }
 
-resource "aws_lb" "main" {
-  name               = "${local.name_prefix}-lb"
-  load_balancer_type = "application"
-  security_groups    = [module.alb_sg.id]
-  subnets            = module.vpc.public_subnets_ids
-}
+module "lb_app_target" {
+  source = "../../modules/alb_targets"
 
-resource "aws_lb_target_group" "main" {
+  prefix      = local.name_prefix
+  region      = local.region
+  alb_id      = module.alb.alb_id
+  target_type = "ip"
+  vpc_id      = module.vpc.vpc_id
   name        = "${local.name_prefix}-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
-}
 
-resource "aws_lb_listener" "main" {
-  load_balancer_arn = aws_lb.main.id
-  port              = "80"
-  protocol          = "HTTP"
+  default_action_type = "forward"
+  listener_protocol   = "HTTP"
+  listener_port       = 80
 
-  default_action {
-    target_group_arn = aws_lb_target_group.main.id
-    type             = "forward"
+  default_action_forward = {
+    target_groups = [{
+      weight = 10
+    }]
   }
 }
 
@@ -186,7 +193,7 @@ module "application_deployment" {
 
   ### ECS SERVICE
   service_load_balancer = {
-    target_group_arn = aws_lb_target_group.main.arn
+    target_group_arn = module.lb_app_target.target_group_arn
     container_name   = local.container_name
     container_port   = var.app_port
   }
