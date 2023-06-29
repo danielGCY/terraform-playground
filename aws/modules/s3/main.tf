@@ -19,3 +19,20 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_sse" {
 resource "aws_s3_bucket_public_access_block" "bucket_public_access_block" {
   bucket = aws_s3_bucket.s3_bucket.id
 }
+
+resource "aws_s3_bucket_cors_configuration" "default" {
+  bucket = aws_s3_bucket.s3_bucket.id
+
+  dynamic "cors_rule" {
+    for_each = var.cors_rules
+
+    content {
+      id              = cors_rule.value["id"]
+      allowed_headers = cors_rule.value["allowed_headers"]
+      allowed_methods = cors_rule.value["allowed_methods"]
+      allowed_origins = cors_rule.value["allowed_origins"]
+      expose_headers  = cors_rule.value["expose_headers"]
+      max_age_seconds = cors_rule.value["max_age_seconds"]
+    }
+  }
+}
