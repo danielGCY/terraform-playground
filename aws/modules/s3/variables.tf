@@ -20,6 +20,7 @@ variable "cors_rules" {
     expose_headers  = optional(list(string))
     max_age_seconds = optional(number)
   }))
+  default = []
   validation {
     condition     = alltrue([for rule in var.cors_rules : alltrue([for method in rule.allowed_methods : contains(["GET", "PUT", "HEAD", "POST", "DELETE"], method)])])
     error_message = "Variable `cors_rules.allowed_methods` must only contain \"GET\", \"PUT\", \"HEAD\", \"POST\", or \"DELETE\""

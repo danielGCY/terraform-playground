@@ -21,6 +21,7 @@ resource "aws_s3_bucket_public_access_block" "bucket_public_access_block" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "default" {
+  count  = min(length(var.cors_rules), 1)
   bucket = aws_s3_bucket.s3_bucket.id
 
   dynamic "cors_rule" {
